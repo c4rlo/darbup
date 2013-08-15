@@ -1,0 +1,48 @@
+* Read config files:
+  - verbatim dar arguments: what to back up, compression, etc.
+  - capacity to assume for destination dir
+    (i.e. don't allow it to fill it up completely)
+  - time schedule:
+    - how often full backups should occur
+    - how often incremental backups should occur
+    - note, regudar is expected to be run via anacron or similar;
+      it will simply do nothing if the schedule does not demand it;
+      schedule cannot be more frequent than invocations, obviously
+  - space schedule:
+    - which old backups to delete when in need of disk space
+* Decide whether our time schedule says we should make a backup at all
+  (if not exit), and if so whether full or incremental
+* Read existing backups (parse filenames)
+  Also figure out which backups are incremental relative to which others
+  (do we need to keep track of this ourselves??)
+* Figure out how much disk space we have left
+  - Should use "du" equivalent to get actual use on disk
+  - Or maybe "df" if destination is root of a mount point
+* Open destination backup file for writing
+  - Use a temp file, rename when done
+* Invoke "dar -c - (other args)", using stdout=PIPE
+* Use sendfile to copy data from dar's stdout to destination fd
+  - Only copy as many bytes as we have free space
+  - If there is more to read, first clean up disk space
+  - Repeat until done
+* Disk space cleanup is according to space schedule:
+  - choice of multiple, parameterized algorithms
+  - fifo: always delete oldest backup
+  - thinning:
+    - let the backups be numbered ascendingly in order of age, i.e. backup[0] is
+      the most recent one
+    - backup[i].importance = f(backup[i].age), where f might be e.g. exp(-x)
+    - backup[i].score = backup[i].importance * (backup[i-1].age - backup[i].age)
+    - delete the backup with the lowest score
+      - ...which has no dependent incremental backup
+* Logging: private logfile + syslog
+* User notifications:
+  - Ideally want to use D-Bus org.freedesktop.Notifications, but this is on the
+    Session bus, which we (possibly) don't have available to us (depends whether
+    we are started from the user's session or not)
+  - But could write the session bus address to some well-known file at login
+    time
+  - Or find the relevant environment var (DBUS_SESSION_BUS_ADDRESS) in
+    /proc/$pid/environ
+  - Or perhaps get our own interface on the System D-Bus and use signals
+  - Or perhaps write to a file and someone else reads that

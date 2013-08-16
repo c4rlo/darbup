@@ -21,7 +21,7 @@
 * Open destination backup file for writing
   - Use a temp file, rename when done
 * Invoke "dar -c - (other args)", using stdout=PIPE
-* Use sendfile to copy data from dar's stdout to destination fd
+* Use Linux splice() to copy data from dar's stdout to destination fd
   - Only copy as many bytes as we have free space
   - If there is more to read, first clean up disk space
   - Repeat until done

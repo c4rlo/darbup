@@ -35,11 +35,11 @@ def block_run(command, filename, limit, callback):
 
 def cleaner():
     print("cleaner here")
-    return 1000
+    return 1024*1024
 
-cmd = '/usr/bin/dd', 'if=/dev/urandom', 'count=600', 'bs=1025'
+cmd = '/usr/bin/dar', '-c', '-', '-R', '/boot', '-I', 'vmlinuz-3*'
 filename = 'junk'
-limit = 500000
+limit = 1024*1024
 
 status, numwritten = block_run(cmd, filename, limit, cleaner)
 print("Exit status {}.  Wrote {} byte(s).".format(status, numwritten))

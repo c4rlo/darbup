@@ -8,8 +8,17 @@
     - note, regudar is expected to be run via anacron or similar;
       it will simply do nothing if the schedule does not demand it;
       schedule cannot be more frequent than invocations, obviously
-  - space schedule:
+  - removal policy:
     - which old backups to delete when in need of disk space
+
+[home]
+DarArguments=-R /home/carlo
+DestinationDir=/backup/data
+Capacity=800G
+FullBackupsInterval=monthly
+IncrBackupsInterval=daily
+RemovalPolicy=fifo
+
 * Decide whether our time schedule says we should make a backup at all
   (if not exit), and if so whether full or incremental
 * Read existing backups (parse filenames)

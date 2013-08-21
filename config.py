@@ -1,4 +1,4 @@
-import configparser, os.path, re
+import configparser, os.path, re, shlex
 
 import schedules, rmpolicies
 from errors import BackupError
@@ -33,7 +33,7 @@ class Config:
             self.instances.append(Instance(
                 name,
                 self._required_value(section, name, 'DestinationDir'),
-                self._required_value(section, name, 'DarArguments'),
+                self._get_dar_args(section, name),
                 self._get_capacity_value(section, name),
                 schedules.schedule_by_name(section['FullBackupsInterval']),
                 schedules.schedule_by_name(section['IncrBackupsInterval']),
@@ -46,6 +46,10 @@ class Config:
                                                              name))
         return section[name]
 
+    def _get_dar_args(self, section, section_name):
+        s = self._required_value(section, section_name, 'DarArguments')
+        return shlex.split(s)
+
     CAPA_RE = re.compile(r'[0-9]+[kmgtp]$')
     CAPA_SUFFIX_FACTORS = {
         'k': (1 << 10),
@@ -57,9 +61,9 @@ class Config:
 
     def _get_capacity_value(self, section, section_name):
         s = self._required_value(section, section_name, 'Capacity')
-        m = CAPA_RE.match(s, re.IGNORECASE)
+        m = self.CAPA_RE.match(s, re.IGNORECASE)
         if not m:
             raise BackupError('Configuration file section {} has bad Capacity '
                               'value "{}": must match /^{}/'.format(
-                                  section_name, s, CAPA_RE.pattern))
-        return int(s[:-1]) * CAPA_SUFFIX_FACTORS[s[-1]]
+                                  section_name, s, self.CAPA_RE.pattern))
+        return int(s[:-1]) * self.CAPA_SUFFIX_FACTORS[s[-1]]

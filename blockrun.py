@@ -1,4 +1,4 @@
-import os, subprocess
+import subprocess
 from splice import splice
 
 def block_run(command, filename, limit, callback):

@@ -1,0 +1,8 @@
+[carlo]
+DarArguments=-R /home/carlo
+DestinationDir=/backup/data
+Capacity=800G
+FullBackupsInterval=monthly
+IncrBackupsInterval=daily
+RemovalPolicy=fifo
+LogfileName=/home/carlo/src/regudar/logs/log

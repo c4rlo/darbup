@@ -1,6 +1,6 @@
 [carlo]
-DarArguments=-R /home/carlo
-DestinationDir=/backup/data
+DarArguments=-R /home/carlo/src/regudar
+DestinationDir=/backup/dar-testing
 Capacity=800G
 FullBackupsInterval=monthly
 IncrBackupsInterval=daily

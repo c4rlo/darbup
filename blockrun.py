@@ -33,13 +33,14 @@ def block_run(command, filename, limit, callback):
             proc.terminate()
             raise
 
-def cleaner():
-    print("cleaner here")
-    return 1024*1024
+if __name__ == '__main__':
+    def cleaner():
+        print("cleaner here")
+        return 1024*1024
 
-cmd = '/usr/bin/dar', '-c', '-', '-R', '/boot', '-I', 'vmlinuz-3*'
-filename = 'junk'
-limit = 1024*1024
+    cmd = '/usr/bin/dar', '-c', '-', '-R', '/boot', '-I', 'vmlinuz-3*'
+    filename = 'junk'
+    limit = 1024*1024
 
-status, numwritten = block_run(cmd, filename, limit, cleaner)
-print("Exit status {}.  Wrote {} byte(s).".format(status, numwritten))
+    status, numwritten = block_run(cmd, filename, limit, cleaner)
+    print("Exit status {}.  Wrote {} byte(s).".format(status, numwritten))

@@ -24,6 +24,11 @@ class Archive:
     def path(self):
         return os.path.join(self._basedir, self._basename)
 
+    def basepath(self):
+        path = self.path()
+        assert path.endswith('.1.dar')
+        return path[:-6]
+
     def prev(self): return self._prev
 
     def next(self): return self._next
@@ -35,9 +40,10 @@ class Archive:
 class ArchiveSet:
     def __init__(self, name, path):
         self._name = name
+        self._basedir = path
         archives = [ ]
         for fn in os.listdir(path):
-            archive = self._archive_at_path(path, fn)
+            archive = self._archive_at_path(fn)
             if archive:
                 archives.append(archive)
         archives.sort(key=attrgetter('timestamp'))
@@ -79,9 +85,13 @@ class ArchiveSet:
     def latest(self):
         return self._last
 
-    def _archive_at_path(self, basedir, basename):
+    def basepath_for_time(self, time, is_incr):
+        return os.path.join(self._basedir, "{0}-{1:%Y-%m-%d-%H%M}-{2}".format(
+            self._name, time, 'incr' if is_incr else 'full'))
+
+    def _archive_at_path(self, basename):
         if basename.startswith(self._name):
             m = _BASENAME_SUFFIX_RE.match(basename[len(self._name):])
             if m:
-                return Archive(basedir, basename, m)
+                return Archive(self._basedir, basename, m)
         return None

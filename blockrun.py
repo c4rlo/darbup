@@ -38,8 +38,11 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
                               .format(limit))
             try:
                 num_splice_calls += 1
+                eff_limit = min(limit, 2**30)  # avoid int overflows
                 num_written = splice(proc.stdout.fileno(), outfile.fileno(),
-                                     limit)
+                                     eff_limit)
+                # logging.debug('splice with limit {} -> {} bytes'.format(
+                #                 eff_limit, num_written))
             except OSError as e:
                 logging.error(str(e))
                 status = None
@@ -90,7 +93,7 @@ def _interpret_exit_status(status):
     elif status == 0:
         return 0
     elif status > 0:
-        return 'bad exit status ' + status
+        return 'bad exit status ' + str(status)
     else:
         signalno = -status
         for name, value in vars(signal).items():

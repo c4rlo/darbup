@@ -13,4 +13,4 @@ class Schedules:
 def schedule_by_name(name):
     sched = getattr(Schedules, name, None)
     if sched: return sched
-    raise BackupError('invalid backup schedule: "{}"'.format(name))
+    raise BackupError('Invalid backup schedule: "{}"'.format(name))

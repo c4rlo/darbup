@@ -1,13 +1,17 @@
+from errors import BackupError
+
 class FifoPolicy:
     def __call__(self, arcset, now):
         for arc in arcset:
-            if not arc.has_dependent(): return arc
+            if not (arc.is_current or arc.has_dependent()):
+                return arc
 
 class ThinningPolicy:
     def __call__(self, arcset, now):
         best_arc = None
         best_score = float('inf')
         for arc in arcset:
+            if arc.is_current: continue
             if not arc.prev(): continue
             if arc.has_dependent(): continue
             prev_time = arc.prev().timestamp
@@ -27,8 +31,13 @@ class ThinningPolicy:
         return best_arc
 
 def rmpolicy_by_name(name):
-    if name == 'fifo': return FifoPolicy()
-    if name == 'thinning': return ThinningPolicy()
+    pol = None
+    if name == 'fifo': pol = FifoPolicy()
+    elif name == 'thinning': pol = ThinningPolicy()
+    else:
+        raise BackupError('Invalid removal policy: "{}"'.format(name))
+    pol.name = name
+    return pol
 
 def _to_secs(tdelta):
     return tdelta.days * 86400 + tdelta.seconds + \

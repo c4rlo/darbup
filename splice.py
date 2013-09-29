@@ -1,8 +1,6 @@
-import ctypes
-import ctypes.util
+import ctypes, ctypes.util
 from ctypes import c_int, c_size_t, c_ssize_t
-import errno
-import os
+import os, errno
 
 def make_splice():
     libc_name = ctypes.util.find_library('c')

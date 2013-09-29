@@ -1,4 +1,4 @@
-import re, os, os.path
+import re, os, os.path, logging
 from datetime import datetime
 from operator import attrgetter
 
@@ -11,15 +11,14 @@ _BASENAME_SUFFIX_RE = re.compile(_ARCHIVE_BASENAME_SUFFIX_PAT)
 
 
 class Archive:
-    def __init__(self, basedir, basename, match):
+    def __init__(self, basedir, basename, timestamp, is_incr, size):
         self._basedir = basedir
         self._basename = basename
-        self.timestamp = datetime(int(match.group(1)), int(match.group(2)),
-                                  int(match.group(3)), int(match.group(4)),
-                                  int(match.group(5)))
-        self.is_incremental = (match.group(6) == 'incr')
-        self.size = os.path.getsize(self.path())
+        self.timestamp = timestamp
+        self.is_incremental = is_incr
+        self.size = size
         self._prev = self._next = None
+        self.is_current = False
 
     def path(self):
         return os.path.join(self._basedir, self._basename)
@@ -45,24 +44,18 @@ class ArchiveSet:
         for fn in os.listdir(path):
             archive = self._archive_at_path(fn)
             if archive:
+                logging.debug('Found existing archive {}'.format(fn))
                 archives.append(archive)
         archives.sort(key=attrgetter('timestamp'))
         if len(archives) > 0 and archives[0].is_incremental:
             raise BackupError('Oldest archive {} is incremental'
                               .format(archive.path()))
-        self._total_size = 0
+        self._first = None
+        self._last = None
         self._count = 0
-        prev = None
-        for arch in archives:
-            if prev:
-                prev._next = arch
-                arch._prev = prev
-            else:
-                self._first = arch
-            self._total_size += arch.size
-            self._count += 1
-            prev = arch
-        self._last = prev
+        self._total_size = 0
+        for arc in archives:
+            self._append(arc)
 
     def __iter__(self):
         curr = self._first
@@ -72,6 +65,30 @@ class ArchiveSet:
 
     def __len__(self):
         return self._count
+
+    def __str__(self):
+        return '{} bytes in {} archives (base name "{}" under {})'.format(
+            self._total_size, self._count, self._name, self._basedir)
+
+    def append_current(self, timestamp, is_incr):
+        basename = "{}-{:%Y-%m-%d-%H%M}-{}.1.dar".format(
+            self._name, timestamp,
+            'incr' if is_incr else 'full')
+        archive = Archive(self._basedir, basename, timestamp, is_incr, None)
+        archive.is_current = True
+        self._append(archive)
+        return os.path.join(self._basedir, basename)
+
+    def _append(self, archive):
+        if self._first is None:
+            self._first = archive
+        else:
+            self._last._next = archive
+            archive._prev = self._last
+        self._last = archive
+        self._count += 1
+        if archive.size is not None:
+            self._total_size += archive.size
 
     def remove(self, archive):
         if self._first == archive: self._first = archive._next
@@ -85,13 +102,15 @@ class ArchiveSet:
     def latest(self):
         return self._last
 
-    def basepath_for_time(self, time, is_incr):
-        return os.path.join(self._basedir, "{0}-{1:%Y-%m-%d-%H%M}-{2}".format(
-            self._name, time, 'incr' if is_incr else 'full'))
-
     def _archive_at_path(self, basename):
         if basename.startswith(self._name):
             m = _BASENAME_SUFFIX_RE.match(basename[len(self._name):])
             if m:
-                return Archive(self._basedir, basename, m)
+                return Archive(self._basedir, basename,
+                               datetime(int(m.group(1)), int(m.group(2)),
+                                        int(m.group(3)), int(m.group(4)),
+                                        int(m.group(5))),
+                               m.group(6) == 'incr',
+                               os.path.getsize(os.path.join(self._basedir,
+                                                            basename)))
         return None

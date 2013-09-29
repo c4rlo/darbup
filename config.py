@@ -5,29 +5,26 @@ from errors import BackupError
 
 class Instance:
     def __init__(self, name, dest_dir, dar_args, capacity, full_intvl,
-                 incr_intvl, rm_policy, logfilename):
+                 incr_intvl, rmpolicy, logfilename):
         self.name = name
         self.dest_dir = dest_dir
         self.dar_args = dar_args
         self.capacity = capacity
         self.full_intvl = full_intvl
         self.incr_intvl = incr_intvl
-        self.rm_policy = rm_policy
+        self.rmpolicy = rmpolicy
         self.logfilename = logfilename
 
 class Config:
-    def __init__(self):
+    def __init__(self, filename):
         parser = configparser.ConfigParser()
         parser['DEFAULT'] = {
             'FullBackupsInterval': 'monthly',
             'IncrBackupsInterval': 'daily',
             'RemovalPolicy': 'fifo'
         }
-        parser.read((
-            'dev-config',
-            os.path.join(os.environ['HOME'], '.regudar', 'config'),
-            '/etc/regudar.conf'
-        ))
+
+        parser.read(filename)
 
         self.instances = []
 

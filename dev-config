@@ -1,7 +1,7 @@
 [carlo]
 DarArguments=-R /home/carlo/src/regudar
 DestinationDir=/home/carlo/regudar-test
-Capacity=280K
+Capacity=380K
 FullBackupsInterval=monthly
 IncrBackupsInterval=always
 RemovalPolicy=thinning

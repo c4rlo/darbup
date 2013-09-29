@@ -14,6 +14,9 @@ def main():
     default_config = os.path.join(os.environ['HOME'], '.regudar', 'config')
 
     parser = argparse.ArgumentParser(description='regular backup using dar')
+    parser.add_argument('--full', action='store_true', help='do full backup')
+    parser.add_argument('--incr', action='store_true',
+                        help='do incremental backup')
     parser.add_argument('-c', '--config', metavar='FILENAME',
                         help='configuration file to use (default: '
                             '$HOME/.regudar/config)',
@@ -23,9 +26,18 @@ def main():
                         choices=('DEBUG','INFO','WARNING','ERROR','CRITICAL'),
                         default='INFO')
     args = parser.parse_args()
+    if args.full and args.incr:
+        sys.stderr.write(parser.format_usage())
+        sys.stderr.write('{}: error: only one of --full, --incr may be ' \
+                         'given\n'.format(os.path.basename(sys.argv[0])))
+        return 2
 
     logger = logging.getLogger()
     logger.setLevel(args.loglevel)
+
+    errlogHandler = logging.StreamHandler(sys.stderr)
+    errlogHandler.setLevel(logging.ERROR)
+    logger.addHandler(errlogHandler)
 
     try:
         conf = config.Config(args.config)
@@ -35,7 +47,8 @@ def main():
 
     for cfg in conf.instances:
         logfile_exists = os.path.exists(cfg.logfilename)
-        log_handler = RotatingFileHandler(cfg.logfilename, backupCount=1)
+        log_handler = RotatingFileHandler(cfg.logfilename,
+                                          backupCount=cfg.logsbackupcount)
         logger.addHandler(log_handler)
         if logfile_exists:
             log_handler.doRollover()
@@ -43,32 +56,38 @@ def main():
             '{asctime} {levelname[0]}{levelname[0]} {message}', style='{')
         log_handler.setFormatter(log_formatter)
         try:
-            run(cfg)
+            run(cfg, args.full, args.incr)
         except BackupError as e:
             logger.error(str(e))
         except Exception as e:
             logger.exception(e)
         logger.removeHandler(log_handler)
 
-def run(cfg):
+def run(cfg, force_full, force_incr):
     now = datetime.datetime.now()
     arcset = ArchiveSet(cfg.name, cfg.dest_dir)
     logging.info('Existing archives: {!s}'.format(arcset))
-    if not arcset:
-        logging.info('Starting initial full backup: ' + cfg.name)
+
+    if force_incr:
+        if not arcset:
+            raise BackupError('Cannot run incremental backup: no archives '
+                              'exist yet')
+        backup(True, cfg, now, arcset)
+    elif force_full or not arcset:
         backup(False, cfg, now, arcset)
     else:
         latest_time = arcset.latest().timestamp
         if cfg.full_intvl(latest_time, now):
-            logging.info('Starting full backup: ' + cfg.name)
             backup(False, cfg, now, arcset)
         elif cfg.incr_intvl(latest_time, now):
-            logging.info('Starting incremental backup: ' + cfg.name)
             backup(True, cfg, now, arcset)
         else:
             logging.debug('Not time for next backup yet: ' + cfg.name)
 
 def backup(is_incr, cfg, now, arcset):
+    logging.info('Starting {} backup: {}'.format(
+        'incremental' if is_incr else 'full', cfg.name))
+
     def make_command():
         cmd = [ '/usr/bin/dar', '-c', '-' ]
         if is_incr:

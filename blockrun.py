@@ -72,7 +72,7 @@ class _LoggerThread(threading.Thread):
         self.start()
 
     def run(self):
-        for line in io.TextIOWrapper(self.f):
+        for line in io.TextIOWrapper(self.f, errors='replace'):
             logging.info('{}: {}'.format(self.prefix, line.rstrip('\r\n')))
         logging.debug('Exiting logger thread for {}'.format(self.prefix))
 

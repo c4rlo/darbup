@@ -34,9 +34,10 @@ def main():
         return 1
 
     for cfg in conf.instances:
+        logfile_exists = os.path.exists(cfg.logfilename)
         log_handler = RotatingFileHandler(cfg.logfilename, backupCount=30)
         logger.addHandler(log_handler)
-        if os.path.exists(cfg.logfilename):
+        if logfile_exists:
             log_handler.doRollover()
         log_formatter = logging.Formatter(
             '{asctime} {levelname[0]}{levelname[0]} {message}', style='{')

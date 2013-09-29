@@ -1,6 +1,14 @@
 class BackupError(Exception):
     def __init__(self, msg):
-        self.msg = msg
+        self._msg = msg
 
     def __str__(self):
-        return self.msg
+        return self._msg
+
+class NoRemovalCandidatesError(BackupError):
+    def __init__(self, rmpolicy, arcset):
+        self._msg = 'Removal policy "{}" failed to find a suitable archive ' \
+                'to delete from existing set ({})'.format(rmpolicy.name, arcset)
+
+    def __str__(self):
+        return self._msg

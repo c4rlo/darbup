@@ -70,6 +70,9 @@ class ArchiveSet:
         return '{} bytes in {} archives (base name "{}" under {})'.format(
             self._total_size, self._count, self._name, self._basedir)
 
+    def total_size(self):
+        return self._total_size
+
     def append_current(self, timestamp, is_incr):
         basename = "{}-{:%Y-%m-%d-%H%M}-{}.1.dar".format(
             self._name, timestamp,
@@ -92,12 +95,16 @@ class ArchiveSet:
 
     def remove(self, archive):
         if self._first == archive: self._first = archive._next
-        if self._last == archive: self._last = archive._next
+        if self._last == archive: self._last = archive._prev
         if archive._prev: archive._prev._next = archive._next
         if archive._next: archive._next._prev = archive._prev
         archive._prev = archive._next = None
-        self._total_size -= archive.size
         self._count -= 1
+        if archive.size is not None:
+            self._total_size -= archive.size
+
+    def first(self):
+        return self._first
 
     def latest(self):
         return self._last

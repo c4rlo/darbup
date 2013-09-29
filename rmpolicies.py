@@ -25,9 +25,10 @@ class ThinningPolicy:
             if score < best_score:
                 best_score = score
                 best_arc = arc
-        if best_arc is None:
-            assert len(arcset) <= 1
-            return arcset.first()
+        if best_arc is None and len(arcset) > 0:
+            first = arcset.first()
+            if not first.has_dependent() and not first.is_current:
+                return first
         return best_arc
 
 def rmpolicy_by_name(name):

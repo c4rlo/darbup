@@ -4,7 +4,7 @@ import config
 from archive import ArchiveSet
 from blockrun import block_run
 from cleaner import make_cleaner
-from errors import BackupError
+from errors import BackupError, NoRemovalCandidatesError
 
 import sys, datetime, os, os.path
 import argparse, logging
@@ -35,7 +35,7 @@ def main():
 
     for cfg in conf.instances:
         logfile_exists = os.path.exists(cfg.logfilename)
-        log_handler = RotatingFileHandler(cfg.logfilename, backupCount=30)
+        log_handler = RotatingFileHandler(cfg.logfilename, backupCount=1)
         logger.addHandler(log_handler)
         if logfile_exists:
             log_handler.doRollover()
@@ -69,10 +69,14 @@ def run(cfg):
             logging.debug('Not time for next backup yet: ' + cfg.name)
 
 def backup(is_incr, cfg, now, arcset):
-    command = [ '/usr/bin/dar', '-c', '-' ]
-    if is_incr:
-        command.extend(( '-A', arcset.latest().basepath() ))
-    command.extend(cfg.dar_args)
+    def make_command():
+        cmd = [ '/usr/bin/dar', '-c', '-' ]
+        if is_incr:
+            cmd.extend(( '-A', arcset.latest().basepath() ))
+        cmd.extend(cfg.dar_args)
+        return cmd
+
+    command = make_command()
 
     dest_path = arcset.append_current(now, is_incr)
     # We must add the archive to the set now, so that the removal policy is
@@ -80,8 +84,24 @@ def backup(is_incr, cfg, now, arcset):
     # archive)
 
     dest_path_temp = dest_path + '.part'
-    status, num_bytes = block_run(command, dest_path_temp, cfg.capacity,
-                                  make_cleaner(cfg.rmpolicy, arcset, now))
+    cleaner = make_cleaner(cfg.rmpolicy, arcset, now)
+
+    while True:
+        try:
+            status, num_bytes = block_run(command, dest_path_temp,
+                                      cfg.capacity - arcset.total_size(),
+                                      cleaner)
+            break
+        except NoRemovalCandidatesError:
+            arcset.remove(arcset.latest())
+            # Remove the current archive and see if we are now able to delete an
+            # archive.  It's possible that it was previously impossible because
+            # the current archive was dependent on the previous one (i.e. it was
+            # incremental).
+            cleaner()
+            command = make_command()
+            arcset.append_current(now, is_incr)
+
     if status == 0:
         os.rename(dest_path_temp, dest_path)
         logging.info('Created new {} backup at {} ({} bytes)'.format(
@@ -92,7 +112,6 @@ def backup(is_incr, cfg, now, arcset):
                       'after writing {} bytes'.format(
                           'incremental' if is_incr else 'full',
                           dest_path, status, num_bytes))
-        os.remove(dest_path_temp)
 
 if __name__ == '__main__':
     status = main()

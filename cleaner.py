@@ -1,4 +1,4 @@
-from errors import BackupError
+from errors import BackupError, NoRemovalCandidatesError
 
 import logging, os, os.path
 
@@ -6,9 +6,7 @@ def make_cleaner(rmpolicy, arcset, now):
     def cleaner():
         arc = rmpolicy(arcset, now)
         if not arc:
-            raise BackupError('Removal policy "{}" failed to find a suitable '
-                              'archive to delete from set of {} existing '
-                              'archives'.format(rmpolicy.name, len(arcset)))
+            raise NoRemovalCandidatesError(rmpolicy, arcset)
         size = os.path.getsize(arc.path())
         logging.info('Removing {}, chosen by removal policy "{}", '
                      'to free up {} bytes'.format(arc.path(), rmpolicy.name,

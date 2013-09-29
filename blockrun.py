@@ -1,17 +1,25 @@
-import subprocess, signal, logging, threading, io
+import subprocess, signal, logging, threading, io, os
 from splice import splice
 
 def block_run(command, filename, limit, cleaner):
     logging.debug('Starting process {}, writing to {}, max {} bytes' \
                   .format(command, filename, limit))
-    with open(filename, 'w') as outfile:
+    try:
+        outfile = open(filename, 'w')
         stderr_logger = _LoggerThread()
-        try:
-            return _block_run(command, outfile, limit, cleaner, stderr_logger)
-        finally:
-            if stderr_logger.is_started:
-                stderr_logger.join()
-                logging.debug('Joined subprocess logger thread')
+        success = False
+        status, numbytes = \
+            _block_run(command, outfile, limit, cleaner, stderr_logger)
+        if status == 0:
+            success = True
+    finally:
+        if stderr_logger.is_started:
+            stderr_logger.join()
+            logging.debug('Joined subprocess logger thread')
+        outfile.close()
+        if not success:
+            os.remove(filename)
+    return status, numbytes
 
 def _block_run(command, outfile, limit, cleaner, stderr_logger):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE,

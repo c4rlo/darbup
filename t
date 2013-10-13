@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-./main.py --config dev-config -l DEBUG "$@"
+exec python3 . --config dev-config -l DEBUG "$@"

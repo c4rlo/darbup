@@ -1,0 +1,2 @@
+#!/bin/bash
+sudo -n -u carlo ionice -c 3 nice -15 /usr/bin/python3 -O /home/carlo/src/regudar/

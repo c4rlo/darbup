@@ -62,12 +62,9 @@ def main():
         return 1
 
     for cfg in conf.instances:
-        logfile_exists = os.path.exists(cfg.logfilename)
-        log_handler = RotatingFileHandler(cfg.logfilename,
-                                          backupCount=cfg.logsbackupcount)
+        log_handler = LogFileHandler(cfg.logfilename,
+                                     backupCount=cfg.logsbackupcount)
         logger.addHandler(log_handler)
-        if logfile_exists:
-            log_handler.doRollover()
         log_formatter = logging.Formatter(
             '{asctime} {levelname[0]}{levelname[0]} {message}', style='{')
         log_handler.setFormatter(log_formatter)
@@ -91,7 +88,6 @@ def run(cfg, force_full, force_incr):
     clean_parts(cfg.dest_dir)
     now = datetime.datetime.now()
     arcset = ArchiveSet(cfg.name, cfg.dest_dir)
-    logging.info('Existing archives: {!s}'.format(arcset))
 
     if force_incr:
         if not arcset:
@@ -110,6 +106,7 @@ def run(cfg, force_full, force_incr):
             logging.debug('Not time for next backup yet: ' + cfg.name)
 
 def backup(is_incr, cfg, now, arcset):
+    logging.info('Existing archives: {!s}'.format(arcset))
     logging.info('Starting {} backup: {}'.format(
         'incremental' if is_incr else 'full', cfg.name))
 
@@ -163,6 +160,17 @@ def clean_parts(path):
             fullpath = os.path.join(path, fn)
             os.remove(fullpath)
             logging.info('Removed left-over partial backup {}'.format(fullpath))
+
+class LogFileHandler(RotatingFileHandler):
+    def __init__(self, filename, **kwargs):
+        self.__doneInitialRollover = not os.path.exists(filename)
+        RotatingFileHandler.__init__(self, filename, **kwargs)
+
+    def emit(self, record):
+        if not self.__doneInitialRollover:
+            self.doRollover()
+            self.__doneInitialRollover = True
+        return RotatingFileHandler.emit(self, record)
 
 if __name__ == '__main__':
     status = main()

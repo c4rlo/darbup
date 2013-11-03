@@ -6,12 +6,19 @@ from blockrun import block_run
 from cleaner import make_cleaner
 from errors import BackupError, NoRemovalCandidatesError
 
-import sys, datetime, os, os.path
+import sys, datetime, os, os.path, pwd
 import argparse, logging
 from logging.handlers import RotatingFileHandler
 
 def main():
-    default_config = os.path.join(os.environ['HOME'], '.regudar', 'config')
+    home_dir = os.environ['HOME']
+    if not home_dir:
+        sys.stderr.write('$HOME environment variable must be set\n')
+        return 1
+
+    regudar_dir = os.path.join(home_dir, '.regudar')
+
+    default_config = os.path.join(regudar_dir, 'config')
 
     parser = argparse.ArgumentParser(description='regular backup using dar')
     parser.add_argument('--full', action='store_true', help='do full backup')
@@ -28,9 +35,18 @@ def main():
     args = parser.parse_args()
     if args.full and args.incr:
         sys.stderr.write(parser.format_usage())
-        sys.stderr.write('{}: error: only one of --full, --incr may be ' \
-                         'given\n'.format(os.path.basename(sys.argv[0])))
+        sys.stderr.write('error: only one of --full, --incr may be given\n')
         return 2
+
+    lock_filename = os.path.join(regudar_dir, 'lock')
+    lock_file = open(lock_filename, 'wb')
+
+    try:
+        os.lockf(lock_file.fileno(), os.F_TLOCK, 0)
+    except BlockingIOError:
+        sys.stderr.write('another instance of regudar is already running for '
+                         'user {}\n'.format(pwd.getpwuid(os.geteuid())[0]))
+        return 1
 
     logger = logging.getLogger()
     logger.setLevel(args.loglevel)
@@ -62,6 +78,14 @@ def main():
         except Exception as e:
             logger.exception(e)
         logger.removeHandler(log_handler)
+
+    # Note: it does not matter if this code does not get executed when we exit
+    # (e.g. in case there is an unhandled exception), as it's not the existence
+    # of the lock file that matters but the fact that it's locked; and the lock
+    # is released automatically when the file descriptor is closed, i.e. in any
+    # case when we exit.
+    lock_file.close()
+    os.remove(lock_filename)
 
 def run(cfg, force_full, force_incr):
     clean_parts(cfg.dest_dir)

@@ -64,6 +64,7 @@ def main():
         logger.removeHandler(log_handler)
 
 def run(cfg, force_full, force_incr):
+    clean_parts(cfg.dest_dir)
     now = datetime.datetime.now()
     arcset = ArchiveSet(cfg.name, cfg.dest_dir)
     logging.info('Existing archives: {!s}'.format(arcset))
@@ -131,6 +132,13 @@ def backup(is_incr, cfg, now, arcset):
                       'after writing {} bytes'.format(
                           'incremental' if is_incr else 'full',
                           dest_path, status, num_bytes))
+
+def clean_parts(path):
+    for fn in os.listdir(path):
+        if fn.endswith('.dar.part'):
+            fullpath = os.path.join(path, fn)
+            os.remove(fullpath)
+            logging.info('Removed left-over partial backup {}'.format(fullpath))
 
 if __name__ == '__main__':
     status = main()

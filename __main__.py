@@ -11,12 +11,14 @@ import argparse, logging
 from logging.handlers import RotatingFileHandler
 
 def main():
-    home_dir = os.environ['HOME']
-    if not home_dir:
-        sys.stderr.write('$HOME environment variable must be set\n')
+    pw = pwd.getpwuid(os.geteuid())
+
+    if not pw.pw_dir:
+        sys.stderr.write('error: user {} has no home directory'.format(
+            pw.pw_name))
         return 1
 
-    regudar_dir = os.path.join(home_dir, '.regudar')
+    regudar_dir = os.path.join(pw.pw_dir, '.regudar')
 
     default_config = os.path.join(regudar_dir, 'config')
 
@@ -45,7 +47,7 @@ def main():
         os.lockf(lock_file.fileno(), os.F_TLOCK, 0)
     except BlockingIOError:
         sys.stderr.write('another instance of regudar is already running for '
-                         'user {}\n'.format(pwd.getpwuid(os.geteuid())[0]))
+                         'user {}\n'.format(pw.pw_name))
         return 1
 
     logger = logging.getLogger()

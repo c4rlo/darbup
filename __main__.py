@@ -136,6 +136,7 @@ def backup(is_incr, cfg, now, arcset):
                                       cleaner)
             break
         except NoRemovalCandidatesError:
+            os.remove(dest_path_temp)
             arcset.remove(arcset.latest())
             # Remove the current archive and see if we are now able to delete an
             # archive.  It's possible that it was previously impossible because
@@ -155,6 +156,7 @@ def backup(is_incr, cfg, now, arcset):
                       'after writing {} bytes'.format(
                           'incremental' if is_incr else 'full',
                           dest_path, status, num_bytes))
+        os.remove(dest_path_temp)
 
 def clean_parts(path):
     for fn in os.listdir(path):

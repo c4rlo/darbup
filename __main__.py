@@ -109,8 +109,8 @@ def run(cfg, force_full, force_incr):
 
 def backup(is_incr, cfg, now, arcset):
     logging.info('Existing archives: {!s}'.format(arcset))
-    logging.info('Starting {} backup: {}'.format(
-        'incremental' if is_incr else 'full', cfg.name))
+    type_word = 'incremental' if is_incr else 'full'
+    logging.info('Starting {} backup: {}'.format(type_word, cfg.name))
 
     def make_command():
         cmd = [ '/usr/bin/dar', '-c', '-' ]
@@ -136,26 +136,28 @@ def backup(is_incr, cfg, now, arcset):
                                       cleaner)
             break
         except NoRemovalCandidatesError:
+            # Remove the current archive, and see if we are now able to delete
+            # an archive.  It's possible that it was previously impossible
+            # because the current archive was dependent on the previous one
+            # (i.e. it was incremental).
+            # Note: 'cleaner()' either successfully removes an old archive, or
+            # throws an error. Hence, we cannot get into an infinite loop.
             os.remove(dest_path_temp)
             arcset.remove(arcset.latest())
-            # Remove the current archive and see if we are now able to delete an
-            # archive.  It's possible that it was previously impossible because
-            # the current archive was dependent on the previous one (i.e. it was
-            # incremental).
             cleaner()
+            # As 'arcset.latest()' may have changed, re-genereate the dar
+            # command
             command = make_command()
             arcset.append_current(now, is_incr)
 
     if status == 0:
         os.rename(dest_path_temp, dest_path)
         logging.info('Created new {} backup at {} ({} bytes)'.format(
-            'incremental' if is_incr else 'full',
-            dest_path, num_bytes))
+            type_word, dest_path, num_bytes))
     else:
         logging.error('Failed to create new {} backup at {}: dar failed ({}) '
                       'after writing {} bytes'.format(
-                          'incremental' if is_incr else 'full',
-                          dest_path, status, num_bytes))
+                          type_word, dest_path, status, num_bytes))
         os.remove(dest_path_temp)
 
 def clean_parts(path):

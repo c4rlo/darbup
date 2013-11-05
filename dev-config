@@ -1,8 +1,8 @@
 [carlo]
-DarArguments=-R /home/carlo/src/regudar
-DestinationDir=/home/carlo/regudar-test
+DarArguments=-R /home/carlo/src/darbup
+DestinationDir=/home/carlo/darbup-test
 Capacity=380K
 FullBackupsInterval=monthly
 IncrBackupsInterval=always
 RemovalPolicy=thinning
-LogfileName=/home/carlo/regudar-test/log
+LogfileName=/home/carlo/darbup-test/log

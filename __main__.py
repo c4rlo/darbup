@@ -18,9 +18,9 @@ def main():
             pw.pw_name))
         return 1
 
-    regudar_dir = os.path.join(pw.pw_dir, '.regudar')
+    darbup_dir = os.path.join(pw.pw_dir, '.darbup')
 
-    default_config = os.path.join(regudar_dir, 'config')
+    default_config = os.path.join(darbup_dir, 'config')
 
     parser = argparse.ArgumentParser(description='regular backup using dar')
     parser.add_argument('--full', action='store_true', help='do full backup')
@@ -28,7 +28,7 @@ def main():
                         help='do incremental backup')
     parser.add_argument('-c', '--config', metavar='FILENAME',
                         help='configuration file to use (default: '
-                            '$HOME/.regudar/config)',
+                            '$HOME/.darbup/config)',
                         default=default_config)
     parser.add_argument('-l', '--loglevel', metavar='LEVEL',
                         help='logging level (default: INFO)',
@@ -40,13 +40,13 @@ def main():
         sys.stderr.write('error: only one of --full, --incr may be given\n')
         return 2
 
-    lock_filename = os.path.join(regudar_dir, 'lock')
+    lock_filename = os.path.join(darbup_dir, 'lock')
     lock_file = open(lock_filename, 'wb')
 
     try:
         os.lockf(lock_file.fileno(), os.F_TLOCK, 0)
     except BlockingIOError:
-        sys.stderr.write('another instance of regudar is already running for '
+        sys.stderr.write('another instance of darbup is already running for '
                          'user {}\n'.format(pw.pw_name))
         return 1
 

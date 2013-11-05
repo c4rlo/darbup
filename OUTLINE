@@ -5,7 +5,7 @@
   - time schedule:
     - how often full backups should occur
     - how often incremental backups should occur
-    - note, regudar is expected to be run via anacron or similar;
+    - note, darbup is expected to be run via anacron or similar;
       it will simply do nothing if the schedule does not demand it;
       schedule cannot be more frequent than invocations, obviously
   - removal policy:

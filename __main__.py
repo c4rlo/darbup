@@ -134,6 +134,8 @@ def backup(is_incr, cfg, now, arcset):
             status, num_bytes = block_run(command, dest_path_temp,
                                       cfg.capacity - arcset.total_size(),
                                       cleaner)
+            # Note: if this returns a bad (nonzero) status, or raises and
+            # exception, the file at 'dest_temp_path' has already been removed.
             break
         except NoRemovalCandidatesError:
             # Remove the current archive, and see if we are now able to delete
@@ -142,7 +144,6 @@ def backup(is_incr, cfg, now, arcset):
             # (i.e. it was incremental).
             # Note: 'cleaner()' either successfully removes an old archive, or
             # throws an error. Hence, we cannot get into an infinite loop.
-            os.remove(dest_path_temp)
             arcset.remove(arcset.latest())
             cleaner()
             # As 'arcset.latest()' may have changed, re-genereate the dar
@@ -158,7 +159,6 @@ def backup(is_incr, cfg, now, arcset):
         logging.error('Failed to create new {} backup at {}: dar failed ({}) '
                       'after writing {} bytes'.format(
                           type_word, dest_path, status, num_bytes))
-        os.remove(dest_path_temp)
 
 def clean_parts(path):
     for fn in os.listdir(path):

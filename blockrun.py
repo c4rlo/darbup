@@ -26,6 +26,13 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
                             stderr=subprocess.PIPE)
     proc_desc = '{} (pid {})'.format(
         command if isinstance(command, str) else command[0], proc.pid)
+    def kill_proc():
+        proc.terminate()
+        try:
+            proc.wait(5)
+        except:
+            logging.warning('Killing {}'.format(proc_desc))
+            proc.kill()
     stderr_logger.startLogging(proc.stderr, proc_desc)
     total_num_written = 0
     num_splice_calls = 0
@@ -53,7 +60,7 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
                 except subprocess.TimeoutExpired:
                     logging.warning('{} timed out: terminating'.format(
                         proc_desc))
-                    proc.terminate()
+                    kill_proc()
                 return _interpret_exit_status(status), total_num_written
             total_num_written += num_written
             limit -= num_written
@@ -68,7 +75,7 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
                 return _interpret_exit_status(status), total_num_written
     except:
         logging.warning('Terminating {}'.format(proc_desc))
-        proc.terminate()
+        kill_proc()
         raise
 
 class _LoggerThread(threading.Thread):

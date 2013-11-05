@@ -31,10 +31,19 @@ class ThinningPolicy:
                 return first
         return best_arc
 
+class NeverPolicy:
+    def __call__(self, arcset, now):
+        # Don't just return None, because that causes the cleaner to throw a
+        # NoRemovalCandidatesError, which may result in a retry after deleting
+        # the current archive.  We don't want that -- we want to give up
+        # immediately.
+        raise BackupError('No more disk space is available')
+
 def rmpolicy_by_name(name):
     pol = None
     if name == 'fifo': pol = FifoPolicy()
     elif name == 'thinning': pol = ThinningPolicy()
+    elif name == 'never': pol = NeverPolicy()
     else:
         raise BackupError('Invalid removal policy: "{}"'.format(name))
     pol.name = name

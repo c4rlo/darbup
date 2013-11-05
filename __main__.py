@@ -11,25 +11,28 @@ import argparse, logging
 from logging.handlers import RotatingFileHandler
 
 def main():
-    pw = pwd.getpwuid(os.geteuid())
+    euid = os.geteuid()
+    pw = pwd.getpwuid(euid)
 
-    if not pw.pw_dir:
-        sys.stderr.write('error: user {} has no home directory'.format(
-            pw.pw_name))
-        return 1
-
-    darbup_dir = os.path.join(pw.pw_dir, '.darbup')
-
-    default_config = os.path.join(darbup_dir, 'config')
+    if euid == 0:  # I am root
+        default_config = '/etc/darbup.conf'
+        lock_filename = '/run/darbup.lock'
+    else:
+        if not pw.pw_dir:
+            sys.stderr.write('error: user {} has no home directory'.format(
+                pw.pw_name))
+            return 1
+        darbup_dir = os.path.join(pw.pw_dir, '.darbup')
+        default_config = os.path.join(darbup_dir, 'config')
+        lock_filename = os.path.join(darbup_dir, 'lock')
 
     parser = argparse.ArgumentParser(description='regular backup using dar')
     parser.add_argument('--full', action='store_true', help='do full backup')
     parser.add_argument('--incr', action='store_true',
                         help='do incremental backup')
     parser.add_argument('-c', '--config', metavar='FILENAME',
-                        help='configuration file to use (default: '
-                            '$HOME/.darbup/config)',
-                        default=default_config)
+                        help='configuration file to use (default: {})' \
+                        .format(default_config), default=default_config)
     parser.add_argument('-l', '--loglevel', metavar='LEVEL',
                         help='logging level (default: INFO)',
                         choices=('DEBUG','INFO','WARNING','ERROR','CRITICAL'),
@@ -40,7 +43,6 @@ def main():
         sys.stderr.write('error: only one of --full, --incr may be given\n')
         return 2
 
-    lock_filename = os.path.join(darbup_dir, 'lock')
     lock_file = open(lock_filename, 'wb')
 
     try:

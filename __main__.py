@@ -186,5 +186,7 @@ class LogFileHandler(RotatingFileHandler):
         return RotatingFileHandler.emit(self, record)
 
 if __name__ == '__main__':
+    if sys.version_info < (3, 3):
+        sys.exit('Python >= 3.3 required')
     status = main()
     sys.exit(status)

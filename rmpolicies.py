@@ -1,6 +1,6 @@
 from errors import BackupError
 
-class FifoPolicy:
+class OldestPolicy:
     def __call__(self, arcset, now):
         for arc in arcset:
             if not (arc.is_current or arc.has_dependent()):
@@ -41,7 +41,7 @@ class NeverPolicy:
 
 def rmpolicy_by_name(name):
     pol = None
-    if name == 'fifo': pol = FifoPolicy()
+    if name == 'oldest': pol = OldestPolicy()
     elif name == 'thinning': pol = ThinningPolicy()
     elif name == 'never': pol = NeverPolicy()
     else:

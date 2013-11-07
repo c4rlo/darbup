@@ -25,6 +25,10 @@ def main():
         darbup_dir = os.path.join(pw.pw_dir, '.darbup')
         default_config = os.path.join(darbup_dir, 'config')
         lock_filename = os.path.join(darbup_dir, 'lock')
+        try:
+            os.mkdir(darbup_dir)
+        except FileExistsError:
+            pass
 
     parser = argparse.ArgumentParser(description='regular backup using dar')
     parser.add_argument('--full', action='store_true', help='do full backup')

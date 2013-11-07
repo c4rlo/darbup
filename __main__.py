@@ -66,6 +66,7 @@ def main():
         return 1
 
     for cfg in conf.instances:
+        os.makedirs(os.path.dirname(cfg.logfilename), exist_ok=True)
         log_handler = LogFileHandler(cfg.logfilename,
                                      backupCount=cfg.logsbackupcount)
         logger.addHandler(log_handler)

@@ -63,6 +63,10 @@ def main():
     errlogHandler.setLevel(logging.ERROR)
     logger.addHandler(errlogHandler)
 
+    if not os.path.exists(args.config) and args.config == default_config:
+        config.write_default_config(default_config)
+        return 1
+
     try:
         conf = config.Config(args.config)
     except Exception as e:

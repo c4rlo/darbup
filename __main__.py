@@ -4,9 +4,10 @@ import config
 from archive import ArchiveSet
 from blockrun import block_run
 from cleaner import make_cleaner
-from errors import BackupError, NoRemovalCandidatesError
+from errors import BackupError, NoRemovalCandidatesError, TerminatedSignal
+from errors import exc_str
 
-import sys, datetime, os, os.path, pwd
+import sys, datetime, os, os.path, pwd, signal
 import argparse, logging
 from logging.handlers import RotatingFileHandler
 
@@ -70,7 +71,8 @@ def main():
     try:
         conf = config.Config(args.config)
     except Exception as e:
-        sys.stderr.write('Failed to read configuration: {!s}\n'.format(e))
+        sys.stderr.write('Failed to read configuration: {}\n'
+                         .format(exc_str(e)))
         return 1
 
     for cfg in conf.instances:
@@ -84,10 +86,15 @@ def main():
         try:
             run(cfg, args.full, args.incr)
         except BackupError as e:
-            logger.error(str(e))
+            logging.error(str(e))
+        except (KeyboardInterrupt, TerminatedSignal) as e:
+            logging.error(exc_str(e))
+            return 1
         except Exception as e:
-            logger.exception(e)
-        logger.removeHandler(log_handler)
+            logging.exception(e)
+            raise
+        finally:
+            logger.removeHandler(log_handler)
 
     # Note: it does not matter if this code does not get executed when we exit
     # (e.g. in case there is an unhandled exception), as it's not the existence
@@ -192,5 +199,7 @@ class LogFileHandler(RotatingFileHandler):
 if __name__ == '__main__':
     if sys.version_info < (3, 3):
         sys.exit('Python >= 3.3 required')
+    def handle_sigterm(sig, stk): raise TerminatedSignal()
+    signal.signal(signal.SIGTERM, handle_sigterm)
     status = main()
     sys.exit(status)

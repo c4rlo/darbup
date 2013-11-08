@@ -12,3 +12,10 @@ class NoRemovalCandidatesError(BackupError):
 
     def __str__(self):
         return self._msg
+
+class TerminatedSignal(Exception):
+    def __str__(self):
+        return 'Terminated'
+
+def exc_str(exception):
+    return str(exception) or type(exception).__name__

@@ -1,8 +1,10 @@
+from errors import exc_str
+
 import subprocess, signal, logging, threading, io, os
 from splice import splice
 
 def block_run(command, filename, limit, cleaner):
-    logging.debug('Starting process {}, writing to {}, max {} bytes' \
+    logging.debug('Starting process {}, writing to {}, max {} bytes'
                   .format(command, filename, limit))
     try:
         outfile = open(filename, 'w')
@@ -21,18 +23,13 @@ def block_run(command, filename, limit, cleaner):
             os.remove(filename)
     return status, numbytes
 
+_KILL_TIMEOUT_SECS = 3
+
 def _block_run(command, outfile, limit, cleaner, stderr_logger):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     proc_desc = '{} (pid {})'.format(
         command if isinstance(command, str) else command[0], proc.pid)
-    def kill_proc():
-        proc.terminate()
-        try:
-            proc.wait(5)
-        except:
-            logging.warning('Killing {}'.format(proc_desc))
-            proc.kill()
     stderr_logger.startLogging(proc.stderr, proc_desc)
     total_num_written = 0
     num_splice_calls = 0
@@ -41,26 +38,25 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
             if limit <= 0:
                 logging.debug('Ran out of space: {} bytes left'.format(limit))
                 limit += cleaner()
-                logging.debug('After cleanup, new capacity is {} bytes' \
+                logging.debug('After cleanup, new capacity is {} bytes'
                               .format(limit))
             try:
                 num_splice_calls += 1
                 eff_limit = min(limit, 2**30)  # avoid int overflows
                 num_written = splice(proc.stdout.fileno(), outfile.fileno(),
                                      eff_limit)
-                # logging.debug('splice with limit {} -> {} bytes'.format(
-                #                 eff_limit, num_written))
             except OSError as e:
-                logging.error(str(e))
+                logging.error(exc_str(e))
                 status = None
+                logging.info('Waiting for {} to exit'.format(proc_desc))
                 try:
-                    status = proc.wait(5)
+                    status = proc.wait(_KILL_TIMEOUT_SECS)
                     logging.debug('{} exited with status {}'.format(proc_desc,
                                                                     status))
                 except subprocess.TimeoutExpired:
                     logging.warning('{} timed out: terminating'.format(
                         proc_desc))
-                    kill_proc()
+                    _kill(proc, proc_desc)
                 return _interpret_exit_status(status), total_num_written
             total_num_written += num_written
             limit -= num_written
@@ -75,7 +71,7 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
                 return _interpret_exit_status(status), total_num_written
     except:
         logging.warning('Terminating {}'.format(proc_desc))
-        kill_proc()
+        _kill(proc, proc_desc)
         raise
 
 class _LoggerThread(threading.Thread):
@@ -93,6 +89,18 @@ class _LoggerThread(threading.Thread):
         for line in io.TextIOWrapper(self.f, errors='replace'):
             logging.info('{}: {}'.format(self.prefix, line.rstrip('\r\n')))
         logging.debug('Exiting logger thread for {}'.format(self.prefix))
+
+def _kill(proc, proc_desc):
+    proc.terminate()
+    logging.info('Requested {} to exit'.format(proc_desc))
+    try:
+        proc.wait(_KILL_TIMEOUT_SECS)
+    except subprocess.TimeoutExpired:
+        logging.warning('Timed out; killing {}'.format(proc_desc))
+        proc.kill()
+    except BaseException as e:
+        logging.warning('{}. Killing {}'.format(exc_str(e), proc_desc))
+        proc.kill()
 
 def _interpret_exit_status(status):
     if status is None:

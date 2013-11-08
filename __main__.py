@@ -11,7 +11,10 @@ import sys, datetime, os, os.path, pwd, signal
 import argparse, logging
 from logging.handlers import RotatingFileHandler
 
+
 def main():
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
     euid = os.geteuid()
     pw = pwd.getpwuid(euid)
 
@@ -48,15 +51,32 @@ def main():
         sys.stderr.write('error: only one of --full, --incr may be given\n')
         return 2
 
-    lock_file = open(lock_filename, 'wb')
+    have_lock = False
 
     try:
-        os.lockf(lock_file.fileno(), os.F_TLOCK, 0)
-    except BlockingIOError:
-        sys.stderr.write('another instance of darbup is already running for '
-                         'user {}\n'.format(pw.pw_name))
-        return 1
+        with open(lock_filename, 'a+') as lock_file:
+            lock_file.seek(0)
+            try:
+                os.lockf(lock_file.fileno(), os.F_TLOCK, 0)
+            except BlockingIOError:
+                other_pid = lock_file.read().rstrip()
+                sys.stderr.write('Another instance of darbup is already '
+                                 'running as PID {} for user {}\n'
+                                 .format(other_pid, pw.pw_name))
+                return 1
 
+            have_lock = True
+            lock_file.truncate(0)
+            lock_file.write('{}\n'.format(os.getpid()))
+            lock_file.flush()
+
+            darbup(args, default_config)
+    finally:
+        if have_lock:
+            os.remove(lock_filename)
+
+
+def darbup(args, default_config):
     logger = logging.getLogger()
     logger.setLevel(args.loglevel)
 
@@ -96,13 +116,6 @@ def main():
         finally:
             logger.removeHandler(log_handler)
 
-    # Note: it does not matter if this code does not get executed when we exit
-    # (e.g. in case there is an unhandled exception), as it's not the existence
-    # of the lock file that matters but the fact that it's locked; and the lock
-    # is released automatically when the file descriptor is closed, i.e. in any
-    # case when we exit.
-    lock_file.close()
-    os.remove(lock_filename)
 
 def run(cfg, force_full, force_incr):
     clean_parts(cfg.dest_dir)
@@ -124,6 +137,7 @@ def run(cfg, force_full, force_incr):
             backup(True, cfg, now, arcset)
         else:
             logging.debug('Not time for next backup yet: ' + cfg.name)
+
 
 def backup(is_incr, cfg, now, arcset):
     logging.info('Existing archives: {!s}'.format(arcset))
@@ -178,12 +192,14 @@ def backup(is_incr, cfg, now, arcset):
                       'after writing {} bytes'.format(
                           type_word, dest_path, status, num_bytes))
 
+
 def clean_parts(path):
     for fn in os.listdir(path):
         if fn.endswith('.dar.part'):
             fullpath = os.path.join(path, fn)
             os.remove(fullpath)
             logging.info('Removed left-over partial backup {}'.format(fullpath))
+
 
 class LogFileHandler(RotatingFileHandler):
     def __init__(self, filename, **kwargs):
@@ -196,10 +212,13 @@ class LogFileHandler(RotatingFileHandler):
             self.__doneInitialRollover = True
         return RotatingFileHandler.emit(self, record)
 
+
+def handle_sigterm(sig, stk):
+    raise TerminatedSignal()
+
+
 if __name__ == '__main__':
     if sys.version_info < (3, 3):
         sys.exit('Python >= 3.3 required')
-    def handle_sigterm(sig, stk): raise TerminatedSignal()
-    signal.signal(signal.SIGTERM, handle_sigterm)
     status = main()
     sys.exit(status)

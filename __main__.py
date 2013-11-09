@@ -105,7 +105,7 @@ def darbup(args, default_config):
         log_handler.setFormatter(log_formatter)
         try:
             run(cfg, args.full, args.incr)
-        except BackupError as e:
+        except (BackupError, OSError) as e:
             logging.error(str(e))
         except (KeyboardInterrupt, TerminatedSignal) as e:
             logging.error(exc_str(e))

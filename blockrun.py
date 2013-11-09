@@ -7,7 +7,7 @@ def block_run(command, filename, limit, cleaner):
     logging.debug('Starting process {}, writing to {}, max {} bytes'
                   .format(command, filename, limit))
     try:
-        outfile = open(filename, 'w')
+        outfile = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
         stderr_logger = _LoggerThread()
         success = False
         status, numbytes = \
@@ -18,7 +18,7 @@ def block_run(command, filename, limit, cleaner):
         if stderr_logger.is_started:
             stderr_logger.join()
             logging.debug('Joined subprocess logger thread')
-        outfile.close()
+        os.close(outfile)
         if not success:
             os.remove(filename)
     return status, numbytes
@@ -30,6 +30,7 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
                             stderr=subprocess.PIPE)
     proc_desc = '{} (pid {})'.format(
         command if isinstance(command, str) else command[0], proc.pid)
+    proc_stdout = proc.stdout.fileno()
     stderr_logger.startLogging(proc.stderr, proc_desc)
     total_num_written = 0
     num_splice_calls = 0
@@ -43,8 +44,7 @@ def _block_run(command, outfile, limit, cleaner, stderr_logger):
             try:
                 num_splice_calls += 1
                 eff_limit = min(limit, 2**30)  # avoid int overflows
-                num_written = splice(proc.stdout.fileno(), outfile.fileno(),
-                                     eff_limit)
+                num_written = splice(proc_stdout, outfile, eff_limit)
             except OSError as e:
                 logging.error(exc_str(e))
                 status = None

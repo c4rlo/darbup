@@ -1,4 +1,4 @@
-import sys, configparser, os.path, re, shlex
+import sys, configparser, os, os.path, re, shlex
 
 import schedules, rmpolicies
 from errors import BackupError
@@ -129,6 +129,7 @@ _DEFAULT_CONFIG = b'''\
 '''
 
 def write_default_config(filename):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'wb') as f:
         f.write(_DEFAULT_CONFIG)
     sys.stderr.write('Default configuration file written to {}, '

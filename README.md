@@ -47,6 +47,12 @@ Some things to note here:
 
 I use `nice` and `ionice` to ensure my system remains responsive during backups.
 
+### Restoring files from backup
+
+_darbup_ creates `.dar` archives. These can be extracted using the `dar` tool. For more information, see [the _dar_ documentation](http://dar.linux.free.fr/doc/index.html).
+
+**Note:** `.dar` files created by _darbup_ can be either _full_ or _incremental_ archives. These are distinguished by the presence of either "`-full`" or "`-incr`" in their filename. Incremental archives are always relative to the chronologically preceding archive (which may itself by incremental).
+
 ### Author and license
 
 _darbup_ was created by Carlo Teubner. My email address is my first name, then a dot, then my last name, at gmail dot com.

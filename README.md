@@ -6,7 +6,7 @@ _darbup_ is a wrapper around the excellent [_dar_](http://dar.linux.free.fr/) ar
 ### Features
 
 - **Schedule regular full and incremental backups to any mounted filesystem (e.g. external HDD)**
-- **Useful pre-canned policies for removal of old backups**
+- **Useful pre-canned policies for removal of old backups when configured space used by backups is exceeded**
 - Fully configurable
 - Everything is logged
 

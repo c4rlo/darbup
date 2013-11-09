@@ -21,13 +21,18 @@ class Config:
 
         self.instances = []
 
-        for name, section in parser.items():
-            if name == 'DEFAULT': continue
+        for section_name, section in parser.items():
+            if section_name == 'DEFAULT': continue
+            if not section_name.lower().startswith('backup '):
+                raise BackupError('Configuration file section name "{}" is '
+                                  'invalid: must begin with "Backup "'
+                                  .format(section_name))
             cfg = _ConfigInstance()
-            cfg.name = name
-            cfg.dest_dir = self._required_value(section, name, 'DestinationDir')
-            cfg.dar_args = self._get_dar_args(section, name)
-            cfg.capacity = self._get_capacity_value(section, name)
+            cfg.name = section_name[7:]
+            cfg.dest_dir = self._required_value(section, section_name,
+                                                'DestinationDir')
+            cfg.dar_args = self._get_dar_args(section, section_name)
+            cfg.capacity = self._get_capacity_value(section, section_name)
             cfg.full_intvl = schedules.schedule_by_name(
                                 section['FullBackupsInterval'])
             cfg.incr_intvl = schedules.schedule_by_name(
@@ -39,7 +44,7 @@ class Config:
 
     def _required_value(self, section, section_name, name):
         if name not in section:
-            raise BackupError('Configuration file section {} is missing '
+            raise BackupError('Configuration file section "{}" is missing '
                               'required setting "{}"'.format(section_name,
                                                              name))
         return section[name]
@@ -61,8 +66,8 @@ class Config:
         s = self._required_value(section, section_name, 'Capacity')
         m = self.CAPA_RE.match(s)
         if not m:
-            raise BackupError('Configuration file section {} has bad Capacity '
-                              'value "{}": must match /^{}/'.format(
+            raise BackupError('Configuration file section "{}" has bad '
+                              'Capacity value "{}": must match /^{}/'.format(
                                   section_name, s, self.CAPA_RE.pattern))
         return int(s[:-1]) * self.CAPA_SUFFIX_FACTORS[s[-1].lower()]
 
@@ -76,8 +81,9 @@ _DEFAULT_CONFIG = b'''\
 #
 # Example section (remove '#' to uncomment):
 #
-# [name]
-# # Section name determines basename of generated archives
+# [Backup stuff]
+# # Section names must begin with "Backup ". The arbitrary identifier that
+# # follows determines the basename of generate archives.
 #
 # DarArguments=-R /home/fred
 # # Arguments passed to /usr/bin/dar. Do NOT include -c or -A, as darbup adds

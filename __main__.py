@@ -2,7 +2,7 @@
 
 import config
 from archive import ArchiveSet
-from blockrun import block_run
+from procwrite import proc_write
 from cleaner import make_cleaner
 from errors import BackupError, NoRemovalCandidatesError, TerminatedSignal
 from errors import exc_str
@@ -163,7 +163,7 @@ def backup(is_incr, cfg, now, arcset):
 
     while True:
         try:
-            status, num_bytes = block_run(command, dest_path_temp,
+            status, num_bytes = proc_write(command, dest_path_temp,
                                       cfg.capacity - arcset.total_size(),
                                       cleaner)
             # Note: if this returns a bad (nonzero) status, or raises and

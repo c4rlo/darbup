@@ -3,7 +3,7 @@ from errors import exc_str
 import subprocess, signal, logging, threading, io, os
 from splice import splice
 
-def block_run(command, filename, limit, cleaner):
+def proc_write(command, filename, limit, cleaner):
     logging.debug('Starting process {}, writing to {}, max {} bytes'
                   .format(command, filename, limit))
     try:
@@ -11,7 +11,7 @@ def block_run(command, filename, limit, cleaner):
         stderr_logger = _LoggerThread()
         success = False
         status, numbytes = \
-            _block_run(command, outfile, limit, cleaner, stderr_logger)
+            _proc_write(command, outfile, limit, cleaner, stderr_logger)
         if status == 0:
             success = True
     finally:
@@ -25,7 +25,7 @@ def block_run(command, filename, limit, cleaner):
 
 _KILL_TIMEOUT_SECS = 3
 
-def _block_run(command, outfile, limit, cleaner, stderr_logger):
+def _proc_write(command, outfile, limit, cleaner, stderr_logger):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     proc_desc = '{} (pid {})'.format(

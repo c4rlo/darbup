@@ -1,8 +1,0 @@
-[carlo]
-DarArguments=-R /home/carlo/src/darbup
-DestinationDir=/home/carlo/darbup-test
-Capacity=380K
-FullBackupsInterval=monthly
-IncrBackupsInterval=always
-RemovalPolicy=thinning
-LogfileName=/home/carlo/darbup-test/log

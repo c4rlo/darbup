@@ -46,3 +46,9 @@ Some things to note here:
 - `ionice -c 3` (part of `util-linux`) sets the I/O scheduling class for `darbup` to class 3, which is _Idle_
 
 I use `nice` and `ionice` to ensure my system remains responsive during backups.
+
+### Author and license
+
+_darbup_ was created by Carlo Teubner. My email address is my first name, then a dot, then my last name, at gmail dot com.
+
+_darbup_ is Copyright 2013 Carlo Teubner. It is licensed under the GPL 3, which is reproduced in the accompanying file named `COPYING`.

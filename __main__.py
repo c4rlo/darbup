@@ -170,6 +170,14 @@ def backup(is_incr, cfg, now, arcset):
 
     command = make_command()
 
+    if cfg.ignore_changing_files:
+        good_exit_codes = (0, 11)
+        # The dar manpage documents exit code 11 as the one that is returned if
+        # files changed while reading them, leading to potentially bad data in
+        # the resulting archive.
+    else:
+        good_exit_codes = (0,)
+
     dest_path = arcset.append_current(now, is_incr)
     # We must add the archive to the set now, so that the removal policy is
     # aware of it (i.e. if it's incremental, we must not remove the previous
@@ -182,7 +190,7 @@ def backup(is_incr, cfg, now, arcset):
         try:
             status, num_bytes = proc_write(command, dest_path_temp,
                                       cfg.capacity - arcset.total_size(),
-                                      cleaner)
+                                      cleaner, good_exit_codes)
             # Note: if this returns a bad (nonzero) status, or raises and
             # exception, the file at 'dest_temp_path' has already been removed.
             break
@@ -200,7 +208,7 @@ def backup(is_incr, cfg, now, arcset):
             command = make_command()
             arcset.append_current(now, is_incr)
 
-    if status == 0:
+    if status in good_exit_codes:
         os.rename(dest_path_temp, dest_path)
         logging.info('Created new {} backup at {} ({} bytes)'.format(
             type_word, dest_path, num_bytes))

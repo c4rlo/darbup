@@ -20,25 +20,26 @@ from errors import exc_str
 import subprocess, signal, logging, threading, io, os
 from splice import splice
 
-def proc_write(command, filename, limit, cleaner):
+def proc_write(command, filename, limit, cleaner, good_exit_codes=(0,)):
     logging.debug('Starting process {}, writing to {}, max {} bytes'
                   .format(command, filename, limit))
+    success = False
+    outfile = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+    stderr_logger = None
     try:
-        outfile = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
         stderr_logger = _LoggerThread()
-        success = False
         status, numbytes = \
             _proc_write(command, outfile, limit, cleaner, stderr_logger)
-        if status == 0:
+        if status in good_exit_codes:
             success = True
     finally:
-        if stderr_logger.is_started:
+        if stderr_logger and stderr_logger.is_started:
             stderr_logger.join()
             logging.debug('Joined subprocess logger thread')
         os.close(outfile)
         if not success:
             os.remove(filename)
-    return status, numbytes
+    return _interpret_exit_status(status), numbytes
 
 _KILL_TIMEOUT_SECS = 3
 
@@ -74,7 +75,7 @@ def _proc_write(command, outfile, limit, cleaner, stderr_logger):
                     logging.warning('{} timed out: terminating'.format(
                         proc_desc))
                     _kill(proc, proc_desc)
-                return _interpret_exit_status(status), total_num_written
+                return status, total_num_written
             total_num_written += num_written
             limit -= num_written
             if num_written == 0:
@@ -85,7 +86,7 @@ def _proc_write(command, outfile, limit, cleaner, stderr_logger):
                 status = proc.wait()
                 logging.debug('{} exited with status {}'.format(proc_desc,
                                                                 status))
-                return _interpret_exit_status(status), total_num_written
+                return status, total_num_written
     except:
         logging.warning('Terminating {}'.format(proc_desc))
         _kill(proc, proc_desc)

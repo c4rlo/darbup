@@ -31,6 +31,7 @@ class Config:
             'FullBackupsInterval': 'monthly',
             'IncrBackupsInterval': 'daily',
             'RemovalPolicy': 'thinning',
+            'IgnoreChangingFiles': False,
             'LogsBackupCount': 60
         }
 
@@ -55,6 +56,8 @@ class Config:
             cfg.incr_intvl = schedules.schedule_by_name(
                                 section['IncrBackupsInterval'])
             cfg.rmpolicy = rmpolicies.rmpolicy_by_name(section['RemovalPolicy'])
+            cfg.ignore_changing_files = self._bool_value(section, section_name,
+                                'IgnoreChangingFiles')
             cfg.logfilename = section.get('LogfileName')
             cfg.logsbackupcount = int(section.get('LogsBackupCount'))
             self.instances.append(cfg)
@@ -65,6 +68,19 @@ class Config:
                               'required setting "{}"'.format(section_name,
                                                              name))
         return section[name]
+
+    def _bool_value(self, section, section_name, name):
+        value = section[name]
+        if isinstance(value, bool): return value
+        v = value.lower()
+        if v in ('1', 'yes', 'true', 'on'):
+            return True
+        elif v in ('0', 'no', 'false', 'off'):
+            return False
+        else:
+            raise BackupError('Configuration file section "{}" setting "{}" '
+                              'is not a valid boolean value'.format(
+                                  section_name, name))
 
     def _get_dar_args(self, section, section_name):
         s = self._required_value(section, section_name, 'DarArguments')
@@ -143,6 +159,16 @@ _DEFAULT_CONFIG = b'''\
 # # - never: do not delete any archive, but print an error and exit
 # # Note: we never delete archives that serve as reference for other
 # # (incremental) archives.
+#
+# IgnoreChangingFiles=false
+# # If dar detects that files are changing while it is reading them, those files
+# # within the archive may contain bad (incomplete) data. By default, we
+# # consider this a failure, and do not create a backup. Set this option to
+# # 'true' to create the backup archive anyway. The logs will contain messages
+# # explaining what happened and what the affected files are.
+# # See also the --retry-on-change option in "man dar"; this may be specified as
+# # part of the DarArguments configuration setting (see above) to change dar's
+# # behaviour (only sensible if IgnoreChangingFiles=true).
 #
 # LogfileName=/home/fred/.darbup/logs/stuff.log
 # # Logfile name.
